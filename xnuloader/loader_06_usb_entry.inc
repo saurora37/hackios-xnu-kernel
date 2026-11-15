@@ -1102,22 +1102,32 @@ efi_main(efi_handle image, efi_system_table *st)
 	slot_detect();
 	/* Start USB peripheral before the boot menu so host tools can interrupt or attach at any time. */
 	(void)usb_start();
-	int menu_choice = ui_boot_menu();
-	if (menu_choice == MENU_CHOICE_ANDROID) {
-		slot_set_active_other();
-		reboot();
-	} else if (menu_choice == MENU_CHOICE_FASTBOOT) {
-		(void)menu_enter_fastboot();
-		if (USB != NULL || usb_start()) {
-			flush_log();
-			usb_command_loop();
-		}
-	} else {
+	/*
+	 * A one-shot image (fastboot boot) boots straight through. The menu repaints the whole
+	 * screen, which erases the very log that is the only evidence here of how far the loader
+	 * got: with no working USB and no storage channel, that log has to survive to be read.
+	 */
+	if (have_payload && !pi.usb_mode) {
 		slot_maintain_current();
+	} else {
+		int menu_choice = ui_boot_menu();
+		if (menu_choice == MENU_CHOICE_ANDROID) {
+			slot_set_active_other();
+			reboot();
+		} else if (menu_choice == MENU_CHOICE_FASTBOOT) {
+			(void)menu_enter_fastboot();
+			if (USB != NULL || usb_start()) {
+				flush_log();
+				usb_command_loop();
+			}
+		} else {
+			slot_maintain_current();
+		}
 	}
 
 	/* One-shot mode: run the kernel that came with the image, then fall back to Fastboot if it returns. */
 	if (have_payload && !pi.usb_mode) {
+		print("one-shot: starting the kernel from the payload\n");
 		run_kernel(0, 0);
 		boot_fallback_enter();
 	}
