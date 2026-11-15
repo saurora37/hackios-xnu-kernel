@@ -185,3 +185,6 @@ jobs:
           git add -A
           git -c user.name="raphael ci" -c user.email="ci@local" commit -q -m "ci: raphael kernel (run $GITHUB_RUN_NUMBER)"
           git push -f origin HEAD:ci-out
+
+# The kernel job only runs when the commit message carries the [kernel] marker; a change under
+# xnu26/patches alone triggers the loader job and leaves the kernel stale.
