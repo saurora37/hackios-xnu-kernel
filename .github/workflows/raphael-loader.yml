@@ -17,6 +17,9 @@ on:
       - "common/devices/**"
       - ".github/workflows/raphael-loader.yml"
 
+permissions:
+  contents: write
+
 jobs:
   loader:
     # The loader is a freestanding AArch64 Windows-PE image: clang plus lld-link, nothing else.
@@ -83,3 +86,21 @@ jobs:
           name: mach-bcm2837
           path: xnu-src/xnu-12377.121.6/BUILD/obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837
           if-no-files-found: error
+
+      - name: Publish the kernel on the ci-out branch
+        # The packaging job lives in the Mu-Silicium fork and cannot read this repo's artifacts
+        # (a GITHUB_TOKEN only reaches its own repository), so the kernel is parked on a public
+        # branch where it can be fetched with plain curl.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          K=xnu-src/xnu-12377.121.6/BUILD/obj/DEVELOPMENT_ARM64_BCM2837/mach.development.bcm2837
+          ls -l "$K"
+          rm -rf /tmp/ciout && mkdir -p /tmp/ciout && cd /tmp/ciout
+          git init -q
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          cp "$GITHUB_WORKSPACE/$K" ./mach.development.bcm2837
+          printf 'run %s, commit %s\n' "$GITHUB_RUN_NUMBER" "$GITHUB_SHA" > BUILD.txt
+          git add -A
+          git -c user.name="raphael ci" -c user.email="ci@local" commit -q -m "ci: raphael kernel (run $GITHUB_RUN_NUMBER)"
+          git push -f origin HEAD:ci-out
