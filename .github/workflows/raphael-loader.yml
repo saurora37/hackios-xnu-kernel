@@ -79,20 +79,51 @@ jobs:
           clang --version | head -1
           xcodebuild -version | head -2
 
+      # Every build step appends to kernel.log. The log of a failing run is not readable without
+      # a signed-in account, so the tail is published on the ci-log branch instead.
       - name: Fetch the 12377 sources and apply the series
-        run: ./xnu26/apply.sh
+        shell: bash
+        run: |
+          set -o pipefail
+          ./xnu26/apply.sh 2>&1 | tee -a kernel.log
 
       - name: Stage 1 dependencies
-        run: ./xnu26/deps-macos.sh --stage1
+        shell: bash
+        run: |
+          set -o pipefail
+          ./xnu26/deps-macos.sh --stage1 2>&1 | tee -a kernel.log
 
       - name: Export kernel headers
-        run: ./xnu26/build-macos.sh exporthdrs installhdrs
+        shell: bash
+        run: |
+          set -o pipefail
+          ./xnu26/build-macos.sh exporthdrs installhdrs 2>&1 | tee -a kernel.log
 
       - name: Stage 2 dependencies
-        run: ./xnu26/deps-macos.sh --stage2
+        shell: bash
+        run: |
+          set -o pipefail
+          ./xnu26/deps-macos.sh --stage2 2>&1 | tee -a kernel.log
 
       - name: Build the kernel
-        run: ./xnu26/build-macos.sh
+        shell: bash
+        run: |
+          set -o pipefail
+          ./xnu26/build-macos.sh 2>&1 | tee -a kernel.log
+
+      - name: Publish the kernel log on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          { tail -n 600 kernel.log 2>/dev/null || echo 'no kernel.log'; } > .ci-log.txt
+          rm -rf /tmp/logout && mkdir -p /tmp/logout && cd /tmp/logout
+          git init -q
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          cp "$GITHUB_WORKSPACE/.ci-log.txt" ./kernel-build-log.txt
+          git add -A
+          git -c user.name="raphael ci" -c user.email="ci@local" commit -q -m "ci: kernel build log (run $GITHUB_RUN_NUMBER)"
+          git push -f origin HEAD:ci-log || true
 
       - uses: actions/upload-artifact@v4
         with:
