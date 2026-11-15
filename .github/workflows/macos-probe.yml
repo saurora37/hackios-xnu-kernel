@@ -1,0 +1,21 @@
+name: macos probe
+
+# One question: can this repository get a macOS runner at all? The kernel job is cancelled
+# within twenty seconds with no steps run, which is either a retired runner label or an
+# account-level block on macOS minutes. This probe separates the two by trying the moving
+# label instead of a fixed one.
+on:
+  push:
+    paths:
+      - ".github/workflows/macos-probe.yml"
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: macos-latest
+    steps:
+      - name: Say what this runner is
+        run: |
+          uname -a
+          sw_vers
+          xcodebuild -version
