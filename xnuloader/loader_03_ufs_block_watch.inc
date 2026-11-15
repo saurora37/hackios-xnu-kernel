@@ -868,7 +868,7 @@ static int64_t
 run_on_other_cpu(uint64_t mpidr, uint64_t entry, uint64_t boot_args_pa, const struct kernel_live *live, uint64_t slide,
     uint64_t budget)
 {
-	uint64_t started, last_pet, last_battery, last_beat_at, last_beat = 0, noted = 0;
+	uint64_t started, last_pet, last_battery, last_beat_at, last_beat = 0, noted = 0, dump_at = 0;
 	int64_t status;
 	int arrived = 0, watching_only = 0;
 
@@ -915,6 +915,18 @@ run_on_other_cpu(uint64_t mpidr, uint64_t entry, uint64_t boot_args_pa, const st
 	}
 	/* LC-ENTER-END */
 	while (status == 0) {
+		/*
+		 * On this phone every run so far ends with the SoC reset from inside the kernel, which
+		 * erases the screen and never lets this loop reach its return path. Whatever the kernel
+		 * has printed by then is gone: the only copy is its console buffer, in RAM that die
+		 * with the reset. So take that buffer to storage while the kernel is still alive. The
+		 * writes are early on purpose -- the block path needs the firmware interrupts that are
+		 * masked at NOTE_SECONDS.
+		 */
+		if (arrived && seconds_since(started) >= dump_at) {
+			dump_at = seconds_since(started) + 2;
+			write_logs((const char *)loader_ctx[CTX_LOG_PA], loader_ctx[CTX_LOG_LEN]);
+		}
 		/* Storage logging needs firmware interrupts during NOTE_SECONDS on other platforms. */
 		if (!watching_only && seconds_since(started) >= noted + 2) {
 			noted = seconds_since(started);
