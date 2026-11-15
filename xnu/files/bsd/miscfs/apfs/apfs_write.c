@@ -510,5 +510,10 @@ out:
 
 #include "apfs_txn.inc"
 #include "apfs_write_ops.inc"
-#include "apfs_write_ops_dir.inc"
-#include "apfs_write_ops_xattr.inc"
+/*
+ * apfs_write_ops_dir.inc and apfs_write_ops_xattr.inc are not here, and nothing in this tree
+ * calls the functions they would define (apfs_create_dir, apfs_create_symlink, apfs_set_xattr
+ * and the rest of the directory and extended-attribute half of apfs_write.h): the port writes
+ * file contents and leaves the rest as declared API. The two includes were left behind by a
+ * split that never produced the files.
+ */
