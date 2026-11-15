@@ -54,12 +54,51 @@ static const struct platform platform_annibale = {
 };
 
 /*
+ * raphael (Redmi K20 Pro / Mi 9T Pro, SM8150): every value below is measured from the phone's own
+ * device tree (Aloha, Platforms/SurfaceDuo1Pkg/Device/xiaomi-raphael/.../android-raphael.dtb) and
+ * from /proc/iomem on the running phone.
+ */
+static const struct platform platform_raphael = {
+	.name = "raphael",
+	/* SM8150 peripherals fit 0x00400000..0x40000000: GIC 0x17a00000, UFS 0x1d84000,
+	 * GENI uart 0xa90000, I2C 0xc88000, MDSS/DSI 0xae94000..0xaf08000. */
+	.io_base = 0x00400000, .io_size = 0x3FC00000,
+	/* /soc/interrupt-controller@17a00000: reg = <0x17a00000 0x10000 0x17a60000 0x100000>.
+	 * 1 MiB redistributor window and the 128 KiB stride are the defaults, so both fields stay 0. */
+	.gic_dist = 0x17a00000, .gic_redist = 0x17a60000,
+	/* The console is the GENI uart at 0xa90000 (bootargs earlycon=msm_geni_serial,0xa90000), not a
+	 * PL011, and its QUP clock is gated until a driver enables it: uart stays 0. */
+	.uart = 0, .log_other_cpu = 1,
+	/* /cpus/cpu@0..700: reg = <0x0 0x0> .. <0x0 0x700> -- eight consecutive MPIDRs. */
+	.cores = 8, .core_mpidr = {0, 0x100, 0x200, 0x300, 0x400, 0x500, 0x600, 0x700},
+	/* capacity-dmips-mhz: 1024 on cpu@0..300 (Kryo 485 Silver), 1740 on cpu@400..700 (Gold). */
+	.small_cores = 0x0F,
+	/* The boot splash the ABL leaves on screen: /reserved-memory cont_splash_region@0x9c000000. */
+	.fb_base = 0x9C000000,
+};
+
+/*
+ * Which phone a DIRECT_PHONE_PLAT loader is built for. Keeping the choice in one macro lets both
+ * ports build from the same tree: the raphael profile passes -DRAPHAEL_PORT.
+ */
+#ifdef RAPHAEL_PORT
+#define PHONE_PLAT       (&platform_raphael)
+#define PHONE_SCREEN_W   1080   /* dsi_ss_fhd_ea8076_cmd_display */
+#define PHONE_SCREEN_H   2340
+#else
+#define PHONE_PLAT       (&platform_annibale)
+#define PHONE_SCREEN_W   1156
+#define PHONE_SCREEN_H   2510
+#endif
+
+/*
  * The devices the loader knows, told apart by the framebuffer base their UEFI reports. A port to another
  * device adds its description here (common/new-device.sh writes a starting point, docs/PORTING.md says
  * where each value comes from); a display that matches none is QEMU's ramfb.
  */
 static const struct platform *const platforms[] = {
 	&platform_annibale,
+	&platform_raphael,
 };
 
 static int

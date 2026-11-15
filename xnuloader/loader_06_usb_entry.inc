@@ -1062,12 +1062,12 @@ efi_main(efi_handle image, efi_system_table *st)
 	    GOP->mode->info == NULL || GOP->mode->fb_base == 0) {
 		GOP = NULL;                     /* no display (QEMU without -device ramfb) */
 #ifdef DIRECT_PHONE_PLAT
-		/* A phone build selects annibale even without GOP (splash_region 0xfc800000+0x2b00000, P11 1156x2510). */
-		PLAT = &platform_annibale;
-		SCREEN.base = platform_annibale.fb_base;
-		SCREEN.width = 1156;
-		SCREEN.height = 2510;
-		SCREEN.stride = 1156 * 4;
+		/* A phone build selects its own platform even without GOP (see PHONE_PLAT). */
+		PLAT = PHONE_PLAT;
+		SCREEN.base = PHONE_PLAT->fb_base;
+		SCREEN.width = PHONE_SCREEN_W;
+		SCREEN.height = PHONE_SCREEN_H;
+		SCREEN.stride = PHONE_SCREEN_W * 4;
 		print("display assumed at %x: LK splash region\n", SCREEN.base);
 #endif
 	} else {
@@ -1081,7 +1081,7 @@ efi_main(efi_handle image, efi_system_table *st)
 #ifdef DIRECT_PHONE_PLAT
 		/* built for one phone: a framebuffer none of the known ones matches is ours */
 		if (PLAT == &platform_qemu_virt)
-			PLAT = &platform_annibale;
+			PLAT = PHONE_PLAT;
 #else
 		if (PLAT == &platform_qemu_virt)
 			ramfb_phone_screen();
