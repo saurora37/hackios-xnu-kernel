@@ -66,16 +66,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install LLVM and GNU make
-        # The xnu makefiles call gmake, not make: macOS ships BSD make as `make`, so a runner
-        # without the Homebrew `make` formula dies at "gmake: command not found".
+      - name: Install the toolchain
+        # gmake, not make: macOS ships BSD make as `make`, while the xnu makefiles call gmake.
+        # nproc, not sysctl: MakeInc.cmd asks nproc for the job count, and without it make is
+        # handed an empty -j and dies printing its usage text instead of a real error.
         run: |
-          brew install llvm lld make
+          brew install llvm lld make coreutils
           echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix coreutils)/libexec/gnubin" >> "$GITHUB_PATH"
+          # Fallback in case the formula ever stops shipping an unprefixed nproc.
+          if ! test -x "$(brew --prefix coreutils)/libexec/gnubin/nproc"; then
+            mkdir -p "$RUNNER_TEMP/shim"
+            printf '#!/bin/sh\nsysctl -n hw.ncpu\n' > "$RUNNER_TEMP/shim/nproc"
+            chmod +x "$RUNNER_TEMP/shim/nproc"
+            echo "$RUNNER_TEMP/shim" >> "$GITHUB_PATH"
+          fi
       - name: Check the toolchain
         run: |
           gmake --version | head -1
+          nproc
           clang --version | head -1
           xcodebuild -version | head -2
 
