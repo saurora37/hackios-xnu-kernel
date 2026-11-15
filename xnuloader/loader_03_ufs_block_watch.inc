@@ -923,8 +923,8 @@ run_on_other_cpu(uint64_t mpidr, uint64_t entry, uint64_t boot_args_pa, const st
 		 * writes are early on purpose -- the block path needs the firmware interrupts that are
 		 * masked at NOTE_SECONDS.
 		 */
-		if (arrived && seconds_since(started) >= dump_at) {
-			dump_at = seconds_since(started) + 2;
+		if (seconds_since(started) >= dump_at) {
+			dump_at = seconds_since(started) + 1;
 			write_logs((const char *)loader_ctx[CTX_LOG_PA], loader_ctx[CTX_LOG_LEN]);
 		}
 		/* Storage logging needs firmware interrupts during NOTE_SECONDS on other platforms. */

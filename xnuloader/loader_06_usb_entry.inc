@@ -1135,6 +1135,13 @@ efi_main(efi_handle image, efi_system_table *st)
 	/* One-shot mode: run the kernel that came with the image, then fall back to Fastboot if it returns. */
 	if (have_payload && !pi.usb_mode) {
 		print("one-shot: starting the kernel from the payload\n");
+		/*
+		 * Mark the partition before anything runs. A run that ends in a reset leaves the screen
+		 * blank and this loader without a return, so the only way to tell "the log never got
+		 * written" from "the write path itself does not reach this partition" is a write that
+		 * happens while everything is still healthy.
+		 */
+		write_logs(NULL, 0);
 		run_kernel(0, 0);
 		boot_fallback_enter();
 	}
