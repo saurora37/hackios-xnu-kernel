@@ -1092,7 +1092,9 @@ efi_main(efi_handle image, efi_system_table *st)
 	skip_ufs_arbitration = (PLAT == &platform_annibale); /* Native UFS driver owns controller setup on K90. */
 	install_exception_hook();
 	wdt_arm();
-	screen_quiet = 1;
+	/* screen_quiet stays 0 on the phone: the screen is the only channel we can read back,
+	 * and this log is what says which stage the loader actually reached. */
+	screen_quiet = 0;
 
 	int have_payload = parse_payload(&pi, 0);
 	block_start();
