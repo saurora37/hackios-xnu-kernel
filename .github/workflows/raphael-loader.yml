@@ -56,17 +56,28 @@ jobs:
           if-no-files-found: error
 
   kernel:
-    if: ${{ inputs.build_kernel }}
+    # Dispatching with the box ticked is the normal route. A commit whose message carries
+    # "[kernel]" also builds it, which is how a tooling fix can verify itself without
+    # someone having to click Run workflow again.
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.build_kernel) || contains(github.event.head_commit.message, '[kernel]') }}
     # macos-14 was retired from the hosted fleet, and a dead label shows up as a job that is
     # cancelled within twenty seconds with no steps run, not as a build error.
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install LLVM
+      - name: Install LLVM and GNU make
+        # The xnu makefiles call gmake, not make: macOS ships BSD make as `make`, so a runner
+        # without the Homebrew `make` formula dies at "gmake: command not found".
         run: |
-          brew install llvm lld
+          brew install llvm lld make
           echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
+      - name: Check the toolchain
+        run: |
+          gmake --version | head -1
+          clang --version | head -1
+          xcodebuild -version | head -2
 
       - name: Fetch the 12377 sources and apply the series
         run: ./xnu26/apply.sh
