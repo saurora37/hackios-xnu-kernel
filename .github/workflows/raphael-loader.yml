@@ -1,6 +1,6 @@
 name: raphael loader
 
-# Builds the XNU loader for the Redmi K20 Pro (raphael, SM8150) on a macOS runner.
+# Builds the XNU loader for the Redmi K20 Pro (raphael, SM8150).
 # The kernel step is optional and long: the first milestone is that the loader compiles at all,
 # because that is what validates platform_raphael field by field.
 on:
@@ -10,18 +10,25 @@ on:
         description: "also build the XNU kernel (long: downloads xnu-deps, ~40 min)"
         type: boolean
         default: false
+  push:
+    branches: [k90-port]
+    paths:
+      - "xnuloader/**"
+      - "common/devices/**"
+      - ".github/workflows/raphael-loader.yml"
 
 jobs:
   loader:
-    runs-on: macos-14
+    # The loader is a freestanding AArch64 Windows-PE image: clang plus lld-link, nothing else.
+    # That builds on Linux, so only the kernel job needs a macOS image.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install LLVM (clang that can target aarch64-windows, plus lld-link)
+      - name: Install clang and lld (lld-link lives in the lld package)
         run: |
-          brew install llvm lld
-          echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
-          echo "$(brew --prefix lld)/bin" >> "$GITHUB_PATH"
+          sudo apt-get update
+          sudo apt-get install -y clang lld
 
       - name: Check the toolchain
         run: |
