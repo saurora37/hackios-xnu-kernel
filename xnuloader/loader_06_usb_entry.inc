@@ -1142,6 +1142,23 @@ efi_main(efi_handle image, efi_system_table *st)
 		 * happens while everything is still healthy.
 		 */
 		write_logs(NULL, 0);
+		/*
+		 * Then hold the screen for ten minutes with the watchdog petted, so the line write_logs
+		 * just printed stays readable: it names the partition it found, the status of the block
+		 * write and whether the read-back matched. A run that reaches the kernel resets this
+		 * phone before any of that could be photographed.
+		 */
+		{
+			uint64_t freq = READ_SYSREG(CNTFRQ_EL0);
+			uint64_t began = READ_SYSREG(CNTVCT_EL0), pet = began;
+			while (READ_SYSREG(CNTVCT_EL0) - began < 600 * freq) {
+				if (READ_SYSREG(CNTVCT_EL0) - pet > 2 * freq) {
+					wdt_pet();
+					pet = READ_SYSREG(CNTVCT_EL0);
+				}
+				__asm__ volatile("nop");
+			}
+		}
 		run_kernel(0, 0);
 		boot_fallback_enter();
 	}
