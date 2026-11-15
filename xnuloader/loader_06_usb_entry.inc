@@ -1107,7 +1107,7 @@ efi_main(efi_handle image, efi_system_table *st)
 	 * screen, which erases the very log that is the only evidence here of how far the loader
 	 * got: with no working USB and no storage channel, that log has to survive to be read.
 	 */
-	if (have_payload && !pi.usb_mode) {
+	if (have_payload) {
 		slot_maintain_current();
 	} else {
 		int menu_choice = ui_boot_menu();
