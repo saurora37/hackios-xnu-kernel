@@ -182,7 +182,7 @@ ui_ensure_usb_chrome(void)
 		ui_fill(0, 0, (int)SCREEN.width, 1220, UI_BG);
 	}
 
-	ui_draw_top_pill("USB Fastboot  -  annibale", UI_AMBER);
+	ui_draw_top_pill("USB Fastboot  -  " PHONE_PLAT_NAME, UI_AMBER);
 	/* Main status and progress card */
 	ui_round_rect(UI_MARGIN, 240, card_w, 430, 36, 2, UI_CARD_BG, UI_CARD_BORDER, UI_BG);
 	ui_spin_draw();
@@ -221,7 +221,7 @@ ui_stage(const char *word)
 	} else if (usb_connected) {
 		dot_col = UI_GREEN;
 	}
-	ui_draw_top_pill(usb_connected ? "USB Fastboot Connected" : "USB Fastboot  -  annibale", dot_col);
+	ui_draw_top_pill(usb_connected ? "USB Fastboot Connected" : "USB Fastboot  -  " PHONE_PLAT_NAME, dot_col);
 
 	w = ui_measure_text_ex(word, 64, UI_TITLE_SCALE, 0);
 	ui_fill(UI_MARGIN + 16, y - 6, card_w - 32, 64, UI_CARD_BG);

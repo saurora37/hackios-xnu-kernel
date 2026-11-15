@@ -83,10 +83,12 @@ static const struct platform platform_raphael = {
  */
 #ifdef RAPHAEL_PORT
 #define PHONE_PLAT       (&platform_raphael)
+#define PHONE_PLAT_NAME  "raphael"
 #define PHONE_SCREEN_W   1080   /* dsi_ss_fhd_ea8076_cmd_display */
 #define PHONE_SCREEN_H   2340
 #else
 #define PHONE_PLAT       (&platform_annibale)
+#define PHONE_PLAT_NAME  "annibale"
 #define PHONE_SCREEN_W   1156
 #define PHONE_SCREEN_H   2510
 #endif
