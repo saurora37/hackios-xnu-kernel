@@ -90,12 +90,28 @@ jobs:
           xcodebuild -version | head -2
 
       # Every build step appends to kernel.log. The log of a failing run is not readable without
-      # a signed-in account, so the tail is published on the ci-log branch instead.
+      # a signed-in account, so the errors and the tail are published on the ci-log branch.
+      #
+      # The sources and the built dependencies are cached: a run that fails deep in the compile
+      # would otherwise spend its first four minutes rebuilding everything before reaching the
+      # same file. Keyed on the patches, so a change to the port gets a clean tree.
+      - name: Restore the sources and dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            xnu-src
+            xnu-deps
+          key: xnu26-${{ hashFiles('xnu26/patches/**', 'xnu26/files/**', 'xnu26/apply.sh', 'xnu26/deps-macos.sh', 'xnu26/build-macos.sh', 'xnu26/env-macos.sh') }}
+
       - name: Fetch the 12377 sources and apply the series
         shell: bash
         run: |
           set -o pipefail
-          ./xnu26/apply.sh 2>&1 | tee -a kernel.log
+          if [ -d xnu-src/xnu-12377.121.6 ]; then
+            echo 'apply.sh: tree restored from cache, patches already in place'
+          else
+            ./xnu26/apply.sh
+          fi 2>&1 | tee -a kernel.log
 
       - name: Stage 1 dependencies
         shell: bash
@@ -126,7 +142,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          { tail -n 600 kernel.log 2>/dev/null || echo 'no kernel.log'; } > .ci-log.txt
+          # An error deep in the compile is often thousands of lines above the tail, and the
+          # run page truncates the log too, so the errors are copied out first.
+          {
+            echo '=== error lines ==='
+            grep -n -m 80 -E 'error:|Error [12]|Undefined symbols|undefined reference|No rule to make|fatal error' kernel.log || true
+            echo '=== tail ==='
+            tail -n 2500 kernel.log 2>/dev/null || echo 'no kernel.log'
+          } > .ci-log.txt
           rm -rf /tmp/logout && mkdir -p /tmp/logout && cd /tmp/logout
           git init -q
           git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
