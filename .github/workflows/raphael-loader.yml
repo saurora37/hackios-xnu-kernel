@@ -15,6 +15,10 @@ on:
     paths:
       - "xnuloader/**"
       - "common/devices/**"
+      # The port's own kernel sources: a change to a driver has to reach the kernel build, and
+      # without these two a fix can be pushed and never compiled.
+      - "xnu/**"
+      - "xnu26/**"
       - ".github/workflows/raphael-loader.yml"
 
 permissions:
