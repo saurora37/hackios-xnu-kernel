@@ -57,7 +57,9 @@ jobs:
 
   kernel:
     if: ${{ inputs.build_kernel }}
-    runs-on: macos-14
+    # macos-14 was retired from the hosted fleet, and a dead label shows up as a job that is
+    # cancelled within twenty seconds with no steps run, not as a build error.
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
