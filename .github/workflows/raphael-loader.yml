@@ -70,22 +70,22 @@ jobs:
         # gmake, not make: macOS ships BSD make as `make`, while the xnu makefiles call gmake.
         # nproc, not sysctl: MakeInc.cmd asks nproc for the job count, and without it make is
         # handed an empty -j and dies printing its usage text instead of a real error.
+        # nproc is shimmed rather than taking coreutils' libexec/gnubin on PATH: that directory
+        # also shadows install with the GNU one, and the libkern header rule fails under it
+        # ("install: target 'version.h': No such file or directory").
         run: |
-          brew install llvm lld make coreutils
+          brew install llvm lld make
           echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
-          echo "$(brew --prefix coreutils)/libexec/gnubin" >> "$GITHUB_PATH"
-          # Fallback in case the formula ever stops shipping an unprefixed nproc.
-          if ! test -x "$(brew --prefix coreutils)/libexec/gnubin/nproc"; then
-            mkdir -p "$RUNNER_TEMP/shim"
-            printf '#!/bin/sh\nsysctl -n hw.ncpu\n' > "$RUNNER_TEMP/shim/nproc"
-            chmod +x "$RUNNER_TEMP/shim/nproc"
-            echo "$RUNNER_TEMP/shim" >> "$GITHUB_PATH"
-          fi
+          mkdir -p "$RUNNER_TEMP/shim"
+          printf '#!/bin/sh\nexec sysctl -n hw.ncpu\n' > "$RUNNER_TEMP/shim/nproc"
+          chmod +x "$RUNNER_TEMP/shim/nproc"
+          echo "$RUNNER_TEMP/shim" >> "$GITHUB_PATH"
       - name: Check the toolchain
         run: |
           gmake --version | head -1
           nproc
+          command -v install
           clang --version | head -1
           xcodebuild -version | head -2
 
