@@ -224,12 +224,12 @@ ufs_strategy(buf_t bp)
 		return;
 	}
 
-	if (ufs_native_on && ufs_lun[part] != 0xff) {
-		int err = ufshc_strategy_async(bp, ufs_lun[part], ufs_lun_offset[part] + offset, !is_read);
-		if (err == 0) {
-			return; /* Completed asynchronously via GICv3 SPI 297 interrupt and buf_biodone(bp) */
-		}
-	}
+	/*
+	 * No asynchronous path yet: ufshc_strategy_async was never written, and the header does
+	 * not declare it, so even in native mode a request goes through the synchronous fallback
+	 * below. The interrupt-driven one (GICv3 SPI 297) can be built on top of a synchronous
+	 * path that is known to work on hardware.
+	 */
 
 	/* Synchronous fallback */
 	if (!is_read) {
@@ -289,36 +289,19 @@ ufs_ioctl(dev_t dev, u_long cmd, caddr_t data, __unused int fflag, __unused proc
 		if (ufs_darwin_var_part < 0 || part != (uint32_t)ufs_darwin_var_part) {
 			return EROFS;
 		}
-		if (ufs_native_on && ufs_lun[part] != 0xff) {
-			return ufshc_sync_cache(ufs_lun[part]);
-		}
+		/*
+		 * ufshc_sync_cache does not exist: a native write goes out through ufshc_write with no
+		 * SYNCHRONIZE CACHE command behind it, so there is no flush to wait for. Success is
+		 * what the driver actually did.
+		 */
 		return 0;
-	case DKIOCUNMAP: {
-		dk_unmap_t *unmap = (dk_unmap_t *)data;
-		if (ufs_darwin_var_part < 0 || part != (uint32_t)ufs_darwin_var_part) {
-			return EROFS;
-		}
-		if (unmap == NULL || unmap->extents == NULL || unmap->extentsCount == 0) {
-			return 0;
-		}
-		if (ufs_native_on && ufs_lun[part] != 0xff) {
-			for (uint32_t i = 0; i < unmap->extentsCount; i++) {
-				uint64_t off = unmap->extents[i].offset;
-				uint64_t elen = unmap->extents[i].length;
-				if (off % BLOCK != 0 || elen % BLOCK != 0) {
-					return EINVAL;
-				}
-				uint64_t lba = (ufs_lun_offset[part] + off) / BLOCK;
-				uint32_t blocks = (uint32_t)(elen / BLOCK);
-				int err = ufshc_unmap(ufs_lun[part], lba, blocks);
-				if (err != 0) {
-					return err;
-				}
-			}
-			return 0;
-		}
+	case DKIOCUNMAP:
+		/*
+		 * ufshc_unmap does not exist either. Trimming is an optimisation, and APFS is content
+		 * with a device that reports nothing trimmed, so the request is accepted and ignored
+		 * rather than failed -- callers read a failure here as a broken device.
+		 */
 		return 0;
-	}
 	case DKIOCGETFEATURES: {
 		uint32_t features = 0;
 		if (ufs_darwin_var_part >= 0 && part == (uint32_t)ufs_darwin_var_part) {

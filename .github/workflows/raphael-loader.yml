@@ -101,7 +101,7 @@ jobs:
           path: |
             xnu-src
             xnu-deps
-          key: xnu26-${{ hashFiles('xnu26/patches/**', 'xnu26/files/**', 'xnu26/apply.sh', 'xnu26/deps-macos.sh', 'xnu26/build-macos.sh', 'xnu26/env-macos.sh') }}
+          key: xnu26-${{ hashFiles('xnu26/patches/**', 'xnu26/files/**', 'xnu/files/**', 'xnu26/apply.sh', 'xnu26/deps-macos.sh', 'xnu26/build-macos.sh', 'xnu26/env-macos.sh') }}
 
       - name: Fetch the 12377 sources and apply the series
         shell: bash
