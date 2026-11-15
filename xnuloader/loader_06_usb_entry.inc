@@ -1136,28 +1136,24 @@ efi_main(efi_handle image, efi_system_table *st)
 	if (have_payload && !pi.usb_mode) {
 		print("one-shot: starting the kernel from the payload\n");
 		/*
-		 * Mark the partition before anything runs, and turn the outcome into a readable clock:
-		 * this phone loses its screen and its storage channel to a reset about eleven seconds
-		 * after the boot, so the only signal left is how long it takes Android to come back. Reset
-		 * self at 0.5 s / 2.5 s / 4.5 s / 6.5 s / 8.5 s for outcome 0..4 of write_logs (no
-		 * partition found, UEFI's list not in the controller, block write failed, written and read
-		 * back the same, written but read back different). Reading the time the device shows up on
-		 * adb, against its own uptime, gives the reset instant to a fraction of a second.
+		 * Instrument check: reset through the runtime service half a second in, at a point every
+		 * run reaches. If the phone comes back about twelve seconds sooner than the fixed reset
+		 * this platform does on its own, the clock is usable as a channel and the next build can
+		 * carry write_logs' outcome in the delay. If it still comes back at the same instant,
+		 * nothing this loader can call resets this SoC and the channel has to be storage or screen.
 		 */
 		{
-			int code = write_logs(NULL, 0);
 			uint64_t freq = READ_SYSREG(CNTFRQ_EL0);
 			uint64_t began = READ_SYSREG(CNTVCT_EL0);
-			uint64_t budget = (code * 2 + 1) * freq / 2;
 
-			while (READ_SYSREG(CNTVCT_EL0) - began < budget) {
+			print("probe: runtime reset in 500 ms\n");
+			while (READ_SYSREG(CNTVCT_EL0) - began < freq / 2) {
 				__asm__ volatile("nop");
 			}
-			if (code > 4) {
-				code = 4;
+			ST->rt->reset_system(0 /* EfiResetCold */, 0, 0, NULL);
+			for (;;) {
+				__asm__ volatile("wfe");
 			}
-			print("probe: write_logs=%d, reset self after %d ms\n", code, (code * 2 + 1) * 1000 / 2);
-			psci_reset_attempt();
 		}
 		run_kernel(0, 0);
 		boot_fallback_enter();
