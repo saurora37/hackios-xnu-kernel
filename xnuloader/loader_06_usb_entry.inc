@@ -1089,7 +1089,14 @@ efi_main(efi_handle image, efi_system_table *st)
 		print("display %d x %d at %x\n", (uint64_t)SCREEN.width, (uint64_t)SCREEN.height, SCREEN.base);
 	}
 	print("platform %s\n", PLAT->name);
-	skip_ufs_arbitration = (PLAT == &platform_annibale); /* Native UFS driver owns controller setup on K90. */
+	/*
+	 * True on annibale because its kernel never shares the UFS controller, and true on
+	 * raphael for the same reason: the kernel built here has no raphael storage driver,
+	 * so nothing on the kernel side ever takes the controller over. With this off, write_logs()
+	 * refuses to touch storage and the log only ever reaches the screen -- and the screen
+	 * is erased by the reset that ends every run.
+	 */
+	skip_ufs_arbitration = (PLAT == &platform_annibale) || (PLAT == &platform_raphael);
 	install_exception_hook();
 	wdt_arm();
 	/* screen_quiet stays 0 on the phone: the screen is the only channel we can read back,
