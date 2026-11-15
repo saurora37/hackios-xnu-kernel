@@ -1136,28 +1136,28 @@ efi_main(efi_handle image, efi_system_table *st)
 	if (have_payload && !pi.usb_mode) {
 		print("one-shot: starting the kernel from the payload\n");
 		/*
-		 * Mark the partition before anything runs. A run that ends in a reset leaves the screen
-		 * blank and this loader without a return, so the only way to tell "the log never got
-		 * written" from "the write path itself does not reach this partition" is a write that
-		 * happens while everything is still healthy.
-		 */
-		write_logs(NULL, 0);
-		/*
-		 * Then hold the screen for ten minutes with the watchdog petted, so the line write_logs
-		 * just printed stays readable: it names the partition it found, the status of the block
-		 * write and whether the read-back matched. A run that reaches the kernel resets this
-		 * phone before any of that could be photographed.
+		 * Mark the partition before anything runs, and turn the outcome into a readable clock:
+		 * this phone loses its screen and its storage channel to a reset about eleven seconds
+		 * after the boot, so the only signal left is how long it takes Android to come back. Reset
+		 * self at 0.5 s / 2.5 s / 4.5 s / 6.5 s / 8.5 s for outcome 0..4 of write_logs (no
+		 * partition found, UEFI's list not in the controller, block write failed, written and read
+		 * back the same, written but read back different). Reading the time the device shows up on
+		 * adb, against its own uptime, gives the reset instant to a fraction of a second.
 		 */
 		{
+			int code = write_logs(NULL, 0);
 			uint64_t freq = READ_SYSREG(CNTFRQ_EL0);
-			uint64_t began = READ_SYSREG(CNTVCT_EL0), pet = began;
-			while (READ_SYSREG(CNTVCT_EL0) - began < 600 * freq) {
-				if (READ_SYSREG(CNTVCT_EL0) - pet > 2 * freq) {
-					wdt_pet();
-					pet = READ_SYSREG(CNTVCT_EL0);
-				}
+			uint64_t began = READ_SYSREG(CNTVCT_EL0);
+			uint64_t budget = (code * 2 + 1) * freq / 2;
+
+			while (READ_SYSREG(CNTVCT_EL0) - began < budget) {
 				__asm__ volatile("nop");
 			}
+			if (code > 4) {
+				code = 4;
+			}
+			print("probe: write_logs=%d, reset self after %d ms\n", code, (code * 2 + 1) * 1000 / 2);
+			psci_reset_attempt();
 		}
 		run_kernel(0, 0);
 		boot_fallback_enter();

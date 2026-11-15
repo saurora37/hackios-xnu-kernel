@@ -492,7 +492,7 @@ lc_core_off(int64_t state)
 /* LC-WRITE-BEGIN -- extracted verbatim by tools/test-loader-lifecycle.py: the whole of
  * write_logs, so the host test counts the real side effects (partition query, block writes,
  * echo) through stubbed firmware calls. */
-static void
+static int
 write_logs(const char *klog, uint64_t klog_len)
 {
 	efi_block_io *bio;
@@ -518,7 +518,7 @@ write_logs(const char *klog, uint64_t klog_len)
 			}
 			print("\n== END OF LOG ==\n");
 		}
-		return;
+		return 0;
 	}
 	uint64_t bs = bio->media->block_size;
 	uint64_t len = (staged_len + 1 + bs - 1) / bs * bs;
@@ -537,7 +537,7 @@ write_logs(const char *klog, uint64_t klog_len)
 			print("log: NOT WRITTEN to logdump: UEFI's transfer list is not the one in the controller\n");
 		}
 		compose_logs(klog, klog_len);
-		return;
+		return 1;
 	}
 	ws = bio->write_blocks(bio, bio->media->media_id, 0, len, out_buf);
 
@@ -556,6 +556,8 @@ write_logs(const char *klog, uint64_t klog_len)
 	print("log: %d bytes written to logdump (%x), read back %s (%x)\n", len, ws,
 	    EFI_ERROR(ws) ? "not tried" : same ? "the same" : "DIFFERENT", rs);
 	compose_logs(klog, klog_len);
+	int code = EFI_ERROR(ws) ? 2 : same ? 3 : 4;
+	return code;
 }
 /* LC-WRITE-END */
 
