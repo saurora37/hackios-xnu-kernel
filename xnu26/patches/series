@@ -41,6 +41,7 @@
 40-osfmk%arm64%corecrypto%arm64_isa_compatibility.h.patch
 41-osfmk%arm64%cpu.c.patch
 42-osfmk%arm64%machine_routines.c.patch
+42a-osfmk%arm64%machine_routines.c.patch
 43-osfmk%arm64%proc_reg.h.patch
 44-osfmk%arm64%sleh.c.patch
 45-osfmk%arm64%start.s.patch

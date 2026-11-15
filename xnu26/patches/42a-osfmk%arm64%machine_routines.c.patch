@@ -1,0 +1,12 @@
+diff --git a/osfmk/arm64/machine_routines.c b/osfmk/arm64/machine_routines.c
+index 9d466639daba..7a1c30b27f55 100644
+--- a/osfmk/arm64/machine_routines.c
++++ b/osfmk/arm64/machine_routines.c
+@@ -926,5 +926,6 @@ halt_all_cpus(boolean_t reboot)
+ 	if (reboot) {
+ 		printf("MACH Reboot\n");
+-		PEHaltRestart(kPERestartCPU);
++		/* Nothing on this port restarts the SoC. Resetting here erases the log that says
++		 * why the kernel stopped, before loader_return() can hand it back. */
+ 	} else {
+ 		printf("CPU halted\n");
